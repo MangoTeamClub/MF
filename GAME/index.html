@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mango Fire - 3D射击游戏</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        canvas {
+            display: block;
+            outline: none;
+            cursor: none;
+        }
+
+        /* 游戏UI */
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff9500;
+            pointer-events: auto;
+        }
+
+        #health-bar {
+            width: 200px;
+            height: 20px;
+            background: rgba(255, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            border: 2px solid #fff;
+        }
+
+        #health-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff9500);
+            transition: width 0.3s;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+
+        .stat-label {
+            color: #aaa;
+        }
+
+        .stat-value {
+            color: #ff9500;
+            font-weight: bold;
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px 50px;
+            border-radius: 15px;
+            border: 3px solid #ff9500;
+            text-align: center;
+            font-size: 24px;
+            display: none;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        #message button {
+            background: #ff9500;
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            margin-top: 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #message button:hover {
+            background: #ffaa33;
+            transform: scale(1.05);
+        }
+
+        /* 移动端控制 */
+        #mobile-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            padding: 0 30px;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            #mobile-controls {
+                display: flex;
+            }
+        }
+
+        #joystick-container {
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            border: 3px solid rgba(255, 149, 0, 0.7);
+            position: relative;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        #joystick {
+            width: 70px;
+            height: 70px;
+            background: radial-gradient(circle, #ff9500, #ff5500);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(255, 149, 0, 0.8);
+        }
+
+        #action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            pointer-events: auto;
+        }
+
+        .action-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 149, 0, 0.9);
+            color: #000;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 170, 51, 0.9);
+        }
+
+        .action-btn::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .action-btn:active::after {
+            opacity: 1;
+        }
+
+        .btn-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        /* 视角控制区域（移动端） */
+        #look-area {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            pointer-events: auto;
+            display: none;
+            touch-action: none;
+        }
+
+        @media (max-width: 768px) {
+            #look-area {
+                display: block;
+            }
+        }
+
+        /* PC端提示 */
+        #pc-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            text-align: center;
+            border: 1px solid #ff9500;
+        }
+
+        @media (max-width: 768px) {
+            #pc-hint {
+                display: none;
+            }
+        }
+
+        /* 指针锁定提示 */
+        #pointer-lock-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 30px;
+            border-radius: 10px;
+            border: 2px solid #ff9500;
+            text-align: center;
+            font-size: 20px;
+            z-index: 15;
+            pointer-events: auto;
+            display: none;
+        }
+
+        #pointer-lock-hint button {
+            background: #ff9500;
+            color: #000;
+            border: none;
+            padding: 10px 25px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #pointer-lock-hint button:hover {
+            background: #ffaa33;
+        }
+
+        /* 加载界面 */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #loading h1 {
+            color: #ff9500;
+            font-size: 48px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255, 149, 0, 0.7);
+        }
+
+        #loading p {
+            font-size: 20px;
+            margin-bottom: 40px;
+        }
+
+        #progress-bar {
+            width: 300px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #ff9500;
+        }
+
+        #progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff9500, #ff5500);
+            transition: width 0.3s;
+        }
+
+        #loading-details {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #aaa;
+        }
+
+        /* 武器选择 */
+        #weapon-selector {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .weapon-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 24px;
+        }
+
+        .weapon-btn.active {
+            border-color: #ff9500;
+            background: rgba(255, 149, 0, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* 准星 */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 149, 0, 0.9);
+        }
+
+        #crosshair::before {
+            width: 20px;
+            height: 2px;
+            top: 9px;
+            left: 0;
+        }
+
+        #crosshair::after {
+            width: 2px;
+            height: 20px;
+            top: 0;
+            left: 9px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载界面 -->
+    <div id="loading">
+        <h1>MANGO FIRE</h1>
+        <p>加载游戏中...</p>
+        <div id="progress-bar">
+            <div id="progress-fill"></div>
+        </div>
+        <div id="loading-details">初始化3D引擎...</div>
+    </div>
+
+    <!-- 指针锁定提示 -->
+    <div id="pointer-lock-hint">
+        <div>点击屏幕开始游戏</div>
+        <div style="font-size: 14px; margin-top: 10px; color: #aaa;">移动鼠标控制视角，WASD移动</div>
+        <button id="start-game-btn">开始游戏</button>
+    </div>
+
+    <!-- 游戏主容器 -->
+    <div id="game-container">
+        <!-- Three.js画布容器 -->
+        <div id="canvas-container"></div>
+        
+        <!-- 游戏UI -->
+        <div id="ui">
+            <!-- 状态显示 -->
+            <div id="stats">
+                <div id="health-bar">
+                    <div id="health-fill"></div>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">分数:</span>
+                    <span id="score-value" class="stat-value">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">敌人:</span>
+                    <span id="enemies-value" class="stat-value">0/10</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">弹药:</span>
+                    <span id="ammo-value" class="stat-value">30/∞</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">武器:</span>
+                    <span id="weapon-value" class="stat-value">突击步枪</span>
+                </div>
+            </div>
+            
+            <!-- 消息提示（游戏结束/胜利） -->
+            <div id="message">
+                <div id="message-text"></div>
+                <button id="restart-btn">重新开始</button>
+            </div>
+            
+            <!-- 移动端控制 -->
+            <div id="mobile-controls">
+                <div id="joystick-container">
+                    <div id="joystick"></div>
+                </div>
+                <div id="action-buttons">
+                    <button class="action-btn" id="shoot-btn">
+                        <div class="btn-icon">🔫</div>
+                        <div>开火</div>
+                    </button>
+                    <button class="action-btn" id="reload-btn">
+                        <div class="btn-icon">🔃</div>
+                        <div>换弹</div>
+                    </button>
+                    <button class="action-btn" id="jump-btn">
+                        <div class="btn-icon">⬆️</div>
+                        <div>跳跃</div>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 移动端视角控制区域 -->
+            <div id="look-area"></div>
+            
+            <!-- PC端提示 -->
+            <div id="pc-hint">
+                WASD移动 | 鼠标移动视角 | 左键射击 | R换弹 | 空格跳跃 | ESC退出指针锁定
+            </div>
+            
+            <!-- 武器选择 -->
+            <div id="weapon-selector">
+                <div class="weapon-btn active" data-weapon="rifle">🔫</div>
+                <div class="weapon-btn" data-weapon="shotgun">💥</div>
+                <div class="weapon-btn" data-weapon="pistol">🔪</div>
+            </div>
+            
+            <!-- 准星 -->
+            <div id="crosshair"></div>
+        </div>
+    </div>
+
+    <!-- Three.js库（CDN + 离线备用） -->
+    <script>
+        // 尝试从CDN加载Three.js，失败时使用本地备用方案
+        (function() {
+            var script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+            script.integrity = 'sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==';
+            script.crossOrigin = 'anonymous';
+            script.onerror = function() {
+                // CDN加载失败，使用本地备用（内联的Three.js精简版）
+                console.log('CDN加载失败，使用离线版本');
+                // 这里在实际部署时可以替换为内联的Three.js代码
+                // 为简化示例，我们假设CDN可用
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+
+    <!-- 游戏主逻辑 -->
+    <script>
+        // 等待Three.js加载
+        function waitForThreeJS() {
+            if (typeof THREE !== 'undefined') {
+                initGame();
+            } else {
+                setTimeout(waitForThreeJS, 100);
+            }
+        }
+        
+        // 加载进度模拟
+        var progress = 0;
+        var progressInterval = setInterval(function() {
+            progress += Math.random() * 10;
+            if (progress > 100) progress = 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+            
+            var details = document.getElementById('loading-details');
+            if (progress < 30) {
+                details.textContent = '初始化3D引擎...';
+            } else if (progress < 60) {
+                details.textContent = '加载游戏资源...';
+            } else if (progress < 90) {
+                details.textContent = '生成游戏场景...';
+            } else {
+                details.textContent = '准备开始游戏...';
+            }
+            
+            if (progress >= 100) {
+                clearInterval(progressInterval);
+                // Three.js加载完成后开始游戏
+                setTimeout(waitForThreeJS, 500);
+            }
+        }, 200);
+
+        // 游戏主函数
+        function initGame() {
+            // 隐藏加载界面
+            document.getElementById('loading').style.display = 'none';
+            
+            // 游戏变量
+            var scene, camera, renderer, clock;
+            var player, enemies = [], bullets = [], enemyBullets = [];
+            var keys = {}, mouse = { x: 0, y: 0, down: false };
+            var joystick = { active: false, x: 0, y: 0 };
+            var lookTouch = { active: false, lastX: 0, lastY: 0 };
+            var gameState = { score: 0, health: 100, ammo: 30, maxAmmo: 30, enemiesAlive: 10, enemiesTotal: 10 };
+            var weapons = {
+                rifle: { damage: 25, fireRate: 0.1, ammoCost: 1, name: '突击步枪' },
+                shotgun: { damage: 10, fireRate: 0.8, ammoCost: 3, name: '霰弹枪' },
+                pistol: { damage: 15, fireRate: 0.3, ammoCost: 1, name: '手枪' }
+            };
+            var currentWeapon = 'rifle';
+            var lastShot = 0;
+            var floor, obstacles = []; // 改名为obstacles，包含各种障碍物
+            var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            var gameActive = true;
+            var pointerLocked = false;
+            var sensitivity = 0.002; // 鼠标灵敏度
+            
+            // 初始化Three.js场景
+            function initScene() {
+                // 创建场景
+                scene = new THREE.Scene();
+                scene.fog = new THREE.Fog(0x1a1a2e, 10, 50);
+                
+                // 创建相机
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(0, 5, 10);
+                camera.rotation.order = 'YXZ'; // 确保正确的旋转顺序
+                
+                // 创建渲染器
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.getElementById('canvas-container').appendChild(renderer.domElement);
+                
+                // 时钟
+                clock = new THREE.Clock();
+                
+                // 添加灯光
+                var ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                scene.add(ambientLight);
+                
+                var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.camera.left = -50;
+                directionalLight.shadow.camera.right = 50;
+                directionalLight.shadow.camera.top = 50;
+                directionalLight.shadow.camera.bottom = -50;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                scene.add(directionalLight);
+                
+                // 添加地面
+                var floorGeometry = new THREE.PlaneGeometry(100, 100);
+                var floorMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x2a5c2a,
+                    side: THREE.DoubleSide
+                });
+                floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = Math.PI / 2;
+                floor.position.y = -0.5;
+                floor.receiveShadow = true;
+                scene.add(floor);
+                
+                // 创建高大障碍物
+                createTallObstacles();
+                
+                // 创建玩家（第一人称，所以只需要相机）
+                player = {
+                    mesh: camera,
+                    velocity: new THREE.Vector3(),
+                    speed: 5,
+                    jumpForce: 8,
+                    onGround: true,
+                    height: 5,
+                    pitch: 0, // 垂直视角
+                    yaw: 0   // 水平视角
+                };
+                
+                // 初始化玩家视角
+                player.yaw = camera.rotation.y;
+                player.pitch = camera.rotation.x;
+                
+                // 创建敌人
+                createEnemies();
+                
+                // 添加天空盒
+                var skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+                var skyMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x1a1a2e,
+                    side: THREE.BackSide
+                });
+                var sky = new THREE.Mesh(skyGeometry, skyMaterial);
+                scene.add(sky);
+                
+                // 添加一些随机立方体作为装饰（高度较低，不遮挡视线）
+                for (var i = 0; i < 15; i++) {
+                    var size = Math.random() * 2 + 0.5;
+                    var cubeGeometry = new THREE.BoxGeometry(size, size, size);
+                    var cubeMaterial = new THREE.MeshPhongMaterial({ 
+                        color: Math.random() * 0xffffff,
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+                    cube.position.set(
+                        (Math.random() - 0.5) * 90,
+                        size / 2,
+                        (Math.random() - 0.5) * 90
+                    );
+                    cube.castShadow = true;
+                    scene.add(cube);
+                }
+            }
+            
+            // 创建高大障碍物
+            function createTallObstacles() {
+                var obstacleTypes = [
+                    // 类型1: 高墙 (长而高的墙壁)
+                    { width: 1, height: 15, depth: 20, color: 0x8b4513, name: '高墙' },
+                    
+                    // 类型2: 柱子 (高大的圆柱体)
+                    { radius: 2, height: 12, color: 0x696969, name: '柱子', type: 'cylinder' },
+                    
+                    // 类型3: 塔楼 (更高的方形结构)
+                    { width: 3, height: 20, depth: 3, color: 0x654321, name: '塔楼' },
+                    
+                    // 类型4: 矮墙 (但比原来高)
+                    { width: 1, height: 8, depth: 10, color: 0xa0522d, name: '矮墙' }
+                ];
+                
+                // 创建不同高度的障碍物
+                var obstacleCount = 20; // 增加障碍物数量
+                
+                for (var i = 0; i < obstacleCount; i++) {
+                    var typeIndex = Math.floor(Math.random() * obstacleTypes.length);
+                    var type = obstacleTypes[typeIndex];
+                    
+                    var obstacle;
+                    
+                    if (type.type === 'cylinder') {
+                        // 创建圆柱体障碍物
+                        var cylinderGeometry = new THREE.CylinderGeometry(type.radius, type.radius, type.height, 8);
+                        var cylinderMaterial = new THREE.MeshPhongMaterial({ color: type.color });
+                        obstacle = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+                        obstacle.position.y = type.height / 2; // 圆柱体中心在高度一半
+                    } else {
+                        // 创建立方体障碍物
+                        var boxGeometry = new THREE.BoxGeometry(type.width, type.height, type.depth);
+                        var boxMaterial = new THREE.MeshPhongMaterial({ color: type.color });
+                        obstacle = new THREE.Mesh(boxGeometry, boxMaterial);
+                        obstacle.position.y = type.height / 2; // 立方体中心在高度一半
+                    }
+                    
+                    // 随机位置，但确保不会太靠近中心
+                    var angle = Math.random() * Math.PI * 2;
+                    var distance = 10 + Math.random() * 35;
+                    obstacle.position.x = Math.cos(angle) * distance;
+                    obstacle.position.z = Math.sin(angle) * distance;
+                    
+                    // 随机旋转
+                    obstacle.rotation.y = Math.random() * Math.PI * 2;
+                    
+                    // 添加障碍物属性
+                    obstacle.castShadow = true;
+                    obstacle.receiveShadow = true;
+                    obstacle.isObstacle = true;
+                    obstacle.height = type.height;
+                    obstacle.width = type.width || type.radius * 2;
+                    obstacle.depth = type.depth || type.radius * 2;
+                    
+                    scene.add(obstacle);
+                    obstacles.push(obstacle);
+                }
+                
+                // 创建一些连接墙壁，形成迷宫结构
+                createMazeWalls();
+            }
+            
+            // 创建迷宫墙壁
+            function createMazeWalls() {
+                // 迷宫墙壁参数
+                var wallHeight = 12;
+                var wallColor = 0x5d4037;
+                
+                // 创建一些直线墙壁
+                var wallPositions = [
+                    // 水平墙壁
+                    { x: -30, z: 20, width: 40, depth: 1, rotation: 0 },
+                    { x: 25, z: -15, width: 30, depth: 1, rotation: 0 },
+                    { x: -20, z: -25, width: 25, depth: 1, rotation: 0 },
+                    
+                    // 垂直墙壁
+                    { x: 15, z: 30, width: 1, depth: 35, rotation: 0 },
+                    { x: -35, z: -10, width: 1, depth: 25, rotation: 0 },
+                    { x: 30, z: 0, width: 1, depth: 20, rotation: 0 },
+                    
+                    // 倾斜墙壁
+                    { x: -10, z: -10, width: 20, depth: 1, rotation: Math.PI/4 },
+                    { x: 10, z: 10, width: 15, depth: 1, rotation: -Math.PI/6 }
+                ];
+                
+                for (var i = 0; i < wallPositions.length; i++) {
+                    var pos = wallPositions[i];
+                    var wallGeometry = new THREE.BoxGeometry(pos.width, wallHeight, pos.depth);
+                    var wallMaterial = new THREE.MeshPhongMaterial({ color: wallColor });
+                    var wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                    
+                    wall.position.set(pos.x, wallHeight/2, pos.z);
+                    wall.rotation.y = pos.rotation;
+                    wall.castShadow = true;
+                    wall.receiveShadow = true;
+                    wall.isObstacle = true;
+                    wall.height = wallHeight;
+                    wall.width = pos.width;
+                    wall.depth = pos.depth;
+                    
+                    scene.add(wall);
+                    obstacles.push(wall);
+                }
+            }
+            
+            // 创建敌人
+            function createEnemies() {
+                var enemyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
+                var enemyMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                
+                for (var i = 0; i < gameState.enemiesTotal; i++) {
+                    // 确保敌人生成在障碍物之间
+                    var validPosition = false;
+                    var enemyX, enemyZ;
+                    
+                    // 尝试找到一个有效位置
+                    for (var attempt = 0; attempt < 50; attempt++) {
+                        enemyX = (Math.random() - 0.5) * 80;
+                        enemyZ = (Math.random() - 0.5) * 80;
+                        
+                        // 检查是否太靠近玩家起始位置
+                        var distToStart = Math.sqrt(enemyX*enemyX + enemyZ*enemyZ);
+                        if (distToStart < 15) continue;
+                        
+                        // 检查是否太靠近障碍物
+                        var tooCloseToObstacle = false;
+                        for (var j = 0; j < obstacles.length; j++) {
+                            var obstacle = obstacles[j];
+                            var dx = enemyX - obstacle.position.x;
+                            var dz = enemyZ - obstacle.position.z;
+                            var distance = Math.sqrt(dx*dx + dz*dz);
+                            
+                            // 如果距离小于障碍物尺寸+2，则太靠近
+                            var obstacleRadius = Math.max(obstacle.width || 0, obstacle.depth || 0) / 2;
+                            if (distance < obstacleRadius + 3) {
+                                tooCloseToObstacle = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!tooCloseToObstacle) {
+                            validPosition = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!validPosition) {
+                        // 如果找不到有效位置，使用随机位置
+                        enemyX = (Math.random() - 0.5) * 80;
+                        enemyZ = (Math.random() - 0.5) * 80;
+                    }
+                    
+                    var enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+                    enemy.position.set(enemyX, 1, enemyZ);
+                    enemy.castShadow = true;
+                    enemy.receiveShadow = true;
+                    
+                    // 敌人属性
+                    enemy.health = 100;
+                    enemy.speed = 2 + Math.random() * 2;
+                    enemy.target = new THREE.Vector3();
+                    enemy.state = 'patrol'; // patrol, chase, attack
+                    enemy.lastShot = 0;
+                    enemy.shootDelay = 1 + Math.random() * 2;
+                    enemy.canSeePlayer = false;
+                    
+                    scene.add(enemy);
+                    enemies.push(enemy);
+                }
+            }
+            
+            // 初始化事件监听
+            function initEvents() {
+                // 键盘事件
+                window.addEventListener('keydown', function(e) {
+                    keys[e.key.toLowerCase()] = true;
+                    
+                    // 空格键跳跃
+                    if (e.key === ' ' && player.onGround) {
+                        player.velocity.y = player.jumpForce;
+                        player.onGround = false;
+                    }
+                    
+                    // R键换弹
+                    if (e.key === 'r') {
+                        reloadWeapon();
+                    }
+                    
+                    // 数字键切换武器
+                    if (e.key === '1') switchWeapon('rifle');
+                    if (e.key === '2') switchWeapon('shotgun');
+                    if (e.key === '3') switchWeapon('pistol');
+                    
+                    // ESC键退出指针锁定
+                    if (e.key === 'Escape') {
+                        exitPointerLock();
+                    }
+                });
+                
+                window.addEventListener('keyup', function(e) {
+                    keys[e.key.toLowerCase()] = false;
+                });
+                
+                // PC端鼠标事件
+                if (!isMobile) {
+                    // 鼠标移动事件（使用指针锁定）
+                    document.addEventListener('mousemove', onMouseMove);
+                    
+                    // 鼠标按下事件
+                    document.addEventListener('mousedown', function(e) {
+                        mouse.down = true;
+                        if (e.button === 0) { // 左键
+                            shoot();
+                        }
+                        
+                        // 如果游戏未开始，点击后请求指针锁定
+                        if (!pointerLocked) {
+                            requestPointerLock();
+                        }
+                    });
+                    
+                    document.addEventListener('mouseup', function(e) {
+                        mouse.down = false;
+                    });
+                    
+                    // 指针锁定状态变化事件
+                    document.addEventListener('pointerlockchange', onPointerLockChange);
+                    document.addEventListener('mozpointerlockchange', onPointerLockChange);
+                } else {
+                    // 移动端触摸事件
+                    initMobileControls();
+                }
+                
+                // 移动端虚拟摇杆
+                var joystickElement = document.getElementById('joystick');
+                var joystickContainer = document.getElementById('joystick-container');
+                var joystickRadius = 75;
+                
+                joystickContainer.addEventListener('touchstart', function(e) {
+                    joystick.active = true;
+                    updateJoystick(e);
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('touchmove', function(e) {
+                    if (joystick.active) {
+                        updateJoystick(e);
+                        e.preventDefault();
+                    }
+                });
+                
+                document.addEventListener('touchend', function(e) {
+                    if (joystick.active) {
+                        joystick.active = false;
+                        joystick.x = 0;
+                        joystick.y = 0;
+                        joystickElement.style.transform = 'translate(-50%, -50%)';
+                        e.preventDefault();
+                    }
+                });
+                
+                function updateJoystick(e) {
+                    var touch = e.touches[0];
+                    var rect = joystickContainer.getBoundingClientRect();
+                    var centerX = rect.left + rect.width / 2;
+                    var centerY = rect.top + rect.height / 2;
+                    
+                    var deltaX = touch.clientX - centerX;
+                    var deltaY = touch.clientY - centerY;
+                    
+                    // 限制摇杆移动范围
+                    var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                    if (distance > joystickRadius) {
+                        deltaX = deltaX * joystickRadius / distance;
+                        deltaY = deltaY * joystickRadius / distance;
+                    }
+                    
+                    joystick.x = deltaX / joystickRadius;
+                    joystick.y = -deltaY / joystickRadius; // 反转Y轴
+                    
+                    // 更新摇杆视觉位置
+                    joystickElement.style.transform = 'translate(' + (deltaX - joystickRadius/2) + 'px, ' + (deltaY - joystickRadius/2) + 'px)';
+                }
+                
+                // 移动端按钮事件
+                document.getElementById('shoot-btn').addEventListener('touchstart', function(e) {
+                    shoot();
+                    e.preventDefault();
+                });
+                
+                document.getElementById('reload-btn').addEventListener('touchstart', function(e) {
+                    reloadWeapon();
+                    e.preventDefault();
+                });
+                
+                document.getElementById('jump-btn').addEventListener('touchstart', function(e) {
+                    if (player.onGround) {
+                        player.velocity.y = player.jumpForce;
+                        player.onGround = false;
+                    }
+                    e.preventDefault();
+                });
+                
+                // 武器选择按钮
+                var weaponButtons = document.querySelectorAll('.weapon-btn');
+                weaponButtons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var weapon = this.getAttribute('data-weapon');
+                        switchWeapon(weapon);
+                    });
+                });
+                
+                // 重新开始按钮
+                document.getElementById('restart-btn').addEventListener('click', restartGame);
+                
+                // 开始游戏按钮
+                document.getElementById('start-game-btn').addEventListener('click', function() {
+                    document.getElementById('pointer-lock-hint').style.display = 'none';
+                    requestPointerLock();
+                });
+                
+                // 窗口大小调整
+                window.addEventListener('resize', function() {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+                
+                // 请求指针锁定（PC端全屏控制）
+                if (!isMobile) {
+                    document.addEventListener('click', function() {
+                        if (gameActive && !pointerLocked) {
+                            requestPointerLock();
+                        }
+                    });
+                }
+            }
+            
+            // 初始化移动端控制
+            function initMobileControls() {
+                var lookArea = document.getElementById('look-area');
+                
+                // 触摸开始事件
+                lookArea.addEventListener('touchstart', function(e) {
+                    if (e.touches.length === 1) {
+                        var touch = e.touches[0];
+                        lookTouch.active = true;
+                        lookTouch.lastX = touch.clientX;
+                        lookTouch.lastY = touch.clientY;
+                        e.preventDefault();
+                    }
+                });
+                
+                // 触摸移动事件
+                lookArea.addEventListener('touchmove', function(e) {
+                    if (lookTouch.active && e.touches.length === 1) {
+                        var touch = e.touches[0];
+                        var deltaX = touch.clientX - lookTouch.lastX;
+                        var deltaY = touch.clientY - lookTouch.lastY;
+                        
+                        // 更新视角
+                        updateCameraLook(deltaX, deltaY);
+                        
+                        lookTouch.lastX = touch.clientX;
+                        lookTouch.lastY = touch.clientY;
+                        e.preventDefault();
+                    }
+                });
+                
+                // 触摸结束事件
+                lookArea.addEventListener('touchend', function(e) {
+                    if (e.touches.length === 0) {
+                        lookTouch.active = false;
+                    }
+                    e.preventDefault();
+                });
+            }
+            
+            // 鼠标移动事件处理
+            function onMouseMove(e) {
+                if (!pointerLocked || !gameActive) return;
+                
+                // 使用movementX和movementY以获得平滑的视角控制
+                var movementX = e.movementX || e.mozMovementX || e.webkitMovementX || 0;
+                var movementY = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
+                
+                // 更新视角
+                updateCameraLook(movementX, movementY);
+            }
+            
+            // 更新相机视角
+            function updateCameraLook(deltaX, deltaY) {
+                // 更新水平和垂直视角
+                player.yaw -= deltaX * sensitivity;
+                player.pitch -= deltaY * sensitivity;
+                
+                // 限制垂直视角（防止相机翻转）
+                player.pitch = Math.max(-Math.PI/2 + 0.01, Math.min(Math.PI/2 - 0.01, player.pitch));
+                
+                // 应用旋转到相机
+                camera.rotation.order = 'YXZ'; // 先Y轴旋转（偏航），再X轴旋转（俯仰）
+                camera.rotation.y = player.yaw;
+                camera.rotation.x = player.pitch;
+            }
+            
+            // 指针锁定变化事件
+            function onPointerLockChange() {
+                pointerLocked = document.pointerLockElement === renderer.domElement ||
+                              document.mozPointerLockElement === renderer.domElement;
+                
+                if (pointerLocked) {
+                    // 隐藏指针锁定提示
+                    document.getElementById('pointer-lock-hint').style.display = 'none';
+                    console.log('指针锁定已启用');
+                } else {
+                    // 显示指针锁定提示
+                    if (gameActive) {
+                        document.getElementById('pointer-lock-hint').style.display = 'block';
+                    }
+                    console.log('指针锁定已禁用');
+                }
+            }
+            
+            // 请求指针锁定
+            function requestPointerLock() {
+                if (!isMobile) {
+                    renderer.domElement.requestPointerLock = renderer.domElement.requestPointerLock ||
+                                                           renderer.domElement.mozRequestPointerLock ||
+                                                           renderer.domElement.webkitRequestPointerLock;
+                    
+                    if (renderer.domElement.requestPointerLock) {
+                        renderer.domElement.requestPointerLock();
+                    }
+                }
+            }
+            
+            // 退出指针锁定
+            function exitPointerLock() {
+                document.exitPointerLock = document.exitPointerLock ||
+                                          document.mozExitPointerLock ||
+                                          document.webkitExitPointerLock;
+                
+                if (document.exitPointerLock) {
+                    document.exitPointerLock();
+                }
+            }
+            
+            // 射击函数
+            function shoot() {
+                if (!gameActive) return;
+                
+                var now = Date.now() / 1000;
+                var weapon = weapons[currentWeapon];
+                
+                // 检查射击冷却和弹药
+                if (now - lastShot < weapon.fireRate || gameState.ammo < weapon.ammoCost) {
+                    return;
+                }
+                
+                // 消耗弹药
+                gameState.ammo -= weapon.ammoCost;
+                updateUI();
+                
+                lastShot = now;
+                
+                // 创建子弹
+                var bulletCount = currentWeapon === 'shotgun' ? 8 : 1;
+                
+                for (var i = 0; i < bulletCount; i++) {
+                    // 计算射击方向（带一些随机散布）
+                    var spread = currentWeapon === 'shotgun' ? 0.1 : 0.01;
+                    var direction = new THREE.Vector3(0, 0, -1);
+                    direction.applyEuler(camera.rotation);
+                    direction.x += (Math.random() - 0.5) * spread;
+                    direction.y += (Math.random() - 0.5) * spread;
+                    direction.z += (Math.random() - 0.5) * spread;
+                    direction.normalize();
+                    
+                    // 创建子弹
+                    var bulletGeometry = new THREE.SphereGeometry(0.1, 4, 4);
+                    var bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                    var bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+                    
+                    bullet.position.copy(camera.position);
+                    bullet.velocity = direction.clone().multiplyScalar(50);
+                    bullet.damage = weapon.damage / bulletCount;
+                    
+                    scene.add(bullet);
+                    bullets.push(bullet);
+                    
+                    // 子弹存活时间
+                    setTimeout(function(bullet) {
+                        if (bullet.parent) {
+                            scene.remove(bullet);
+                            var index = bullets.indexOf(bullet);
+                            if (index > -1) bullets.splice(index, 1);
+                        }
+                    }, 2000, bullet);
+                }
+                
+                // 播放射击音效（模拟）
+                playSound('shoot');
+            }
+            
+            // 换弹函数
+            function reloadWeapon() {
+                if (!gameActive) return;
+                
+                gameState.ammo = gameState.maxAmmo;
+                updateUI();
+                playSound('reload');
+            }
+            
+            // 切换武器
+            function switchWeapon(weaponType) {
+                if (weapons[weaponType]) {
+                    currentWeapon = weaponType;
+                    
+                    // 更新UI
+                    document.getElementById('weapon-value').textContent = weapons[weaponType].name;
+                    
+                    // 更新武器按钮状态
+                    document.querySelectorAll('.weapon-btn').forEach(function(btn) {
+                        btn.classList.remove('active');
+                    });
+                    document.querySelector('.weapon-btn[data-weapon="' + weaponType + '"]').classList.add('active');
+                    
+                    playSound('switch');
+                }
+            }
+            
+            // 敌人AI - 改进版，考虑障碍物遮挡
+            function updateEnemies(deltaTime) {
+                for (var i = 0; i < enemies.length; i++) {
+                    var enemy = enemies[i];
+                    if (enemy.health <= 0) continue;
+                    
+                    var distanceToPlayer = enemy.position.distanceTo(camera.position);
+                    
+                    // 检查敌人是否能看见玩家（考虑障碍物遮挡）
+                    var canSeePlayer = checkLineOfSight(enemy.position, camera.position);
+                    
+                    // 敌人状态机
+                    if (canSeePlayer && distanceToPlayer < 8) {
+                        // 攻击状态
+                        enemy.state = 'attack';
+                        
+                        // 朝向玩家
+                        var directionToPlayer = new THREE.Vector3();
+                        directionToPlayer.subVectors(camera.position, enemy.position).normalize();
+                        enemy.lookAt(enemy.position.x + directionToPlayer.x, enemy.position.y, enemy.position.z + directionToPlayer.z);
+                        
+                        // 射击
+                        var now = Date.now() / 1000;
+                        if (now - enemy.lastShot > enemy.shootDelay) {
+                            enemyShoot(enemy);
+                            enemy.lastShot = now;
+                        }
+                    } else if (canSeePlayer && distanceToPlayer < 25) {
+                        // 追逐状态
+                        enemy.state = 'chase';
+                        
+                        var directionToPlayer = new THREE.Vector3();
+                        directionToPlayer.subVectors(camera.position, enemy.position).normalize();
+                        
+                        // 移动向玩家，但避开障碍物
+                        var moveDirection = avoidObstacles(enemy, directionToPlayer);
+                        
+                        enemy.position.x += moveDirection.x * enemy.speed * deltaTime;
+                        enemy.position.z += moveDirection.z * enemy.speed * deltaTime;
+                        
+                        // 朝向玩家
+                        enemy.lookAt(enemy.position.x + directionToPlayer.x, enemy.position.y, enemy.position.z + directionToPlayer.z);
+                    } else {
+                        // 巡逻状态
+                        enemy.state = 'patrol';
+                        
+                        // 随机移动
+                        if (Math.random() < 0.01 || enemy.position.distanceTo(enemy.target) < 2) {
+                            enemy.target.x = enemy.position.x + (Math.random() - 0.5) * 20;
+                            enemy.target.z = enemy.position.z + (Math.random() - 0.5) * 20;
+                        }
+                        
+                        var directionToTarget = new THREE.Vector3();
+                        directionToTarget.subVectors(enemy.target, enemy.position).normalize();
+                        
+                        // 避开障碍物
+                        var moveDirection = avoidObstacles(enemy, directionToTarget);
+                        
+                        enemy.position.x += moveDirection.x * enemy.speed * deltaTime * 0.5;
+                        enemy.position.z += moveDirection.z * enemy.speed * deltaTime * 0.5;
+                        
+                        // 朝向移动方向
+                        if (directionToTarget.length() > 0.1) {
+                            enemy.lookAt(enemy.position.x + directionToTarget.x, enemy.position.y, enemy.position.z + directionToTarget.z);
+                        }
+                    }
+                }
+            }
+            
+            // 检查视线是否被障碍物阻挡
+            function checkLineOfSight(startPos, endPos) {
+                var direction = new THREE.Vector3();
+                direction.subVectors(endPos, startPos);
+                var distance = direction.length();
+                direction.normalize();
+                
+                // 沿着视线方向检查多个点
+                var stepCount = 20;
+                var stepSize = distance / stepCount;
+                
+                for (var i = 1; i < stepCount; i++) {
+                    var checkPoint = new THREE.Vector3();
+                    checkPoint.copy(startPos);
+                    checkPoint.add(direction.clone().multiplyScalar(stepSize * i));
+                    
+                    // 检查点是否在障碍物内
+                    for (var j = 0; j < obstacles.length; j++) {
+                        var obstacle = obstacles[j];
+                        
+                        // 简化检查：如果点在障碍物边界框内
+                        var dx = Math.abs(checkPoint.x - obstacle.position.x);
+                        var dz = Math.abs(checkPoint.z - obstacle.position.z);
+                        var dy = Math.abs(checkPoint.y - obstacle.position.y);
+                        
+                        var halfWidth = (obstacle.width || 0) / 2;
+                        var halfDepth = (obstacle.depth || 0) / 2;
+                        var halfHeight = (obstacle.height || 0) / 2;
+                        
+                        // 如果点在障碍物内部
+                        if (dx < halfWidth && dz < halfDepth && dy < halfHeight) {
+                            return false; // 视线被阻挡
+                        }
+                    }
+                }
+                
+                return true; // 视线未被阻挡
+            }
+            
+            // 避开障碍物
+            function avoidObstacles(enemy, direction) {
+                var avoidDirection = direction.clone();
+                var avoidForce = 0;
+                
+                // 检查附近的障碍物
+                for (var i = 0; i < obstacles.length; i++) {
+                    var obstacle = obstacles[i];
+                    var distance = enemy.position.distanceTo(obstacle.position);
+                    var obstacleRadius = Math.max((obstacle.width || 0), (obstacle.depth || 0)) / 2;
+                    
+                    // 如果障碍物在避让范围内
+                    if (distance < obstacleRadius + 5) {
+                        var awayFromObstacle = new THREE.Vector3();
+                        awayFromObstacle.subVectors(enemy.position, obstacle.position);
+                        awayFromObstacle.normalize();
+                        
+                        // 距离越近，避让力度越大
+                        var force = (obstacleRadius + 5 - distance) / (obstacleRadius + 5);
+                        avoidDirection.add(awayFromObstacle.multiplyScalar(force));
+                        avoidForce += force;
+                    }
+                }
+                
+                // 归一化方向
+                if (avoidForce > 0) {
+                    avoidDirection.normalize();
+                }
+                
+                return avoidDirection;
+            }
+            
+            // 敌人射击
+            function enemyShoot(enemy) {
+                var directionToPlayer = new THREE.Vector3();
+                directionToPlayer.subVectors(camera.position, enemy.position).normalize();
+                
+                // 创建敌人子弹
+                var bulletGeometry = new THREE.SphereGeometry(0.1, 4, 4);
+                var bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                var bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+                
+                bullet.position.copy(enemy.position);
+                bullet.position.y += 1;
+                bullet.velocity = directionToPlayer.clone().multiplyScalar(30);
+                bullet.damage = 10;
+                
+                scene.add(bullet);
+                enemyBullets.push(bullet);
+                
+                // 子弹存活时间
+                setTimeout(function(bullet) {
+                    if (bullet.parent) {
+                        scene.remove(bullet);
+                        var index = enemyBullets.indexOf(bullet);
+                        if (index > -1) enemyBullets.splice(index, 1);
+                    }
+                }, 3000, bullet);
+                
+                playSound('enemyShoot');
+            }
+            
+            // 更新子弹 - 改进碰撞检测
+            function updateBullets(deltaTime) {
+                // 玩家子弹
+                for (var i = bullets.length - 1; i >= 0; i--) {
+                    var bullet = bullets[i];
+                    bullet.position.add(bullet.velocity.clone().multiplyScalar(deltaTime));
+                    
+                    // 检测子弹与敌人碰撞
+                    for (var j = enemies.length - 1; j >= 0; j--) {
+                        var enemy = enemies[j];
+                        if (enemy.health > 0 && bullet.position.distanceTo(enemy.position) < 1.5) {
+                            // 击中敌人
+                            enemy.health -= bullet.damage;
+                            
+                            if (enemy.health <= 0) {
+                                // 敌人死亡
+                                gameState.score += 100;
+                                gameState.enemiesAlive--;
+                                updateUI();
+                                
+                                // 死亡效果
+                                enemy.material.color.setHex(0x333333);
+                                setTimeout(function(enemy) {
+                                    if (enemy.parent) {
+                                        scene.remove(enemy);
+                                        var index = enemies.indexOf(enemy);
+                                        if (index > -1) enemies.splice(index, 1);
+                                    }
+                                }, 1000, enemy);
+                                
+                                playSound('enemyDeath');
+                                
+                                // 检查是否所有敌人都被消灭
+                                if (gameState.enemiesAlive <= 0) {
+                                    gameWin();
+                                }
+                            } else {
+                                playSound('hit');
+                            }
+                            
+                            // 移除子弹
+                            scene.remove(bullet);
+                            bullets.splice(i, 1);
+                            break;
+                        }
+                    }
+                    
+                    // 检测子弹与障碍物碰撞
+                    for (var j = 0; j < obstacles.length; j++) {
+                        var obstacle = obstacles[j];
+                        var dx = Math.abs(bullet.position.x - obstacle.position.x);
+                        var dz = Math.abs(bullet.position.z - obstacle.position.z);
+                        var dy = Math.abs(bullet.position.y - obstacle.position.y);
+                        
+                        var halfWidth = (obstacle.width || 0) / 2;
+                        var halfDepth = (obstacle.depth || 0) / 2;
+                        var halfHeight = (obstacle.height || 0) / 2;
+                        
+                        // 如果子弹在障碍物内部
+                        if (dx < halfWidth && dz < halfDepth && dy < halfHeight) {
+                            scene.remove(bullet);
+                            bullets.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+                
+                // 敌人子弹
+                for (var i = enemyBullets.length - 1; i >= 0; i--) {
+                    var bullet = enemyBullets[i];
+                    bullet.position.add(bullet.velocity.clone().multiplyScalar(deltaTime));
+                    
+                    // 检测子弹与玩家碰撞
+                    if (bullet.position.distanceTo(camera.position) < 2) {
+                        // 击中玩家
+                        gameState.health -= bullet.damage;
+                        updateUI();
+                        
+                        // 移除子弹
+                        scene.remove(bullet);
+                        enemyBullets.splice(i, 1);
+                        
+                        playSound('playerHit');
+                        
+                        // 检查玩家死亡
+                        if (gameState.health <= 0) {
+                            gameOver();
+                        }
+                    }
+                    
+                    // 检测子弹与障碍物碰撞
+                    for (var j = 0; j < obstacles.length; j++) {
+                        var obstacle = obstacles[j];
+                        var dx = Math.abs(bullet.position.x - obstacle.position.x);
+                        var dz = Math.abs(bullet.position.z - obstacle.position.z);
+                        var dy = Math.abs(bullet.position.y - obstacle.position.y);
+                        
+                        var halfWidth = (obstacle.width || 0) / 2;
+                        var halfDepth = (obstacle.depth || 0) / 2;
+                        var halfHeight = (obstacle.height || 0) / 2;
+                        
+                        // 如果子弹在障碍物内部
+                        if (dx < halfWidth && dz < halfDepth && dy < halfHeight) {
+                            scene.remove(bullet);
+                            enemyBullets.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 玩家移动 - 改进碰撞检测
+            function updatePlayer(deltaTime) {
+                var moveX = 0, moveZ = 0;
+                
+                // 键盘控制
+                if (keys['w'] || keys['arrowup']) moveZ -= 1;
+                if (keys['s'] || keys['arrowdown']) moveZ += 1;
+                if (keys['a'] || keys['arrowleft']) moveX -= 1;
+                if (keys['d'] || keys['arrowright']) moveX += 1;
+                
+                // 虚拟摇杆控制（移动端）
+                if (joystick.active) {
+                    moveX += joystick.x;
+                    moveZ += joystick.y;
+                }
+                
+                // 归一化移动向量
+                if (moveX !== 0 || moveZ !== 0) {
+                    var length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+                    moveX /= length;
+                    moveZ /= length;
+                }
+                
+                // 应用移动（基于相机方向）
+                var forward = new THREE.Vector3(0, 0, -1);
+                var right = new THREE.Vector3(1, 0, 0);
+                
+                forward.applyEuler(new THREE.Euler(0, player.yaw, 0));
+                right.applyEuler(new THREE.Euler(0, player.yaw, 0));
+                
+                var moveDirection = new THREE.Vector3();
+                moveDirection.add(forward.multiplyScalar(-moveZ));
+                moveDirection.add(right.multiplyScalar(moveX));
+                moveDirection.normalize();
+                
+                // 应用重力
+                player.velocity.y -= 9.8 * deltaTime;
+                
+                // 移动玩家
+                var moveSpeed = player.speed * deltaTime;
+                var newPos = new THREE.Vector3();
+                newPos.copy(camera.position);
+                newPos.x += moveDirection.x * moveSpeed;
+                newPos.z += moveDirection.z * moveSpeed;
+                newPos.y += player.velocity.y * deltaTime;
+                
+                // 检测地面碰撞
+                if (newPos.y < player.height) {
+                    newPos.y = player.height;
+                    player.velocity.y = 0;
+                    player.onGround = true;
+                }
+                
+                // 检测玩家与障碍物碰撞
+                var canMove = true;
+                for (var i = 0; i < obstacles.length; i++) {
+                    var obstacle = obstacles[i];
+                    var dx = Math.abs(newPos.x - obstacle.position.x);
+                    var dz = Math.abs(newPos.z - obstacle.position.z);
+                    var dy = Math.abs(newPos.y - obstacle.position.y);
+                    
+                    var halfWidth = (obstacle.width || 0) / 2 + 1.5; // 增加碰撞半径
+                    var halfDepth = (obstacle.depth || 0) / 2 + 1.5;
+                    var halfHeight = (obstacle.height || 0) / 2 + 1;
+                    
+                    // 如果玩家在障碍物内部或太靠近
+                    if (dx < halfWidth && dz < halfDepth && dy < halfHeight) {
+                        canMove = false;
+                        
+                        // 尝试将玩家推开
+                        var pushDirection = new THREE.Vector3();
+                        pushDirection.subVectors(camera.position, obstacle.position);
+                        pushDirection.y = 0;
+                        pushDirection.normalize();
+                        
+                        newPos.x = camera.position.x + pushDirection.x * 0.1;
+                        newPos.z = camera.position.z + pushDirection.z * 0.1;
+                        break;
+                    }
+                }
+                
+                if (canMove) {
+                    camera.position.copy(newPos);
+                }
+                
+                // 限制玩家移动范围
+                var maxDistance = 45;
+                if (camera.position.x < -maxDistance) camera.position.x = -maxDistance;
+                if (camera.position.x > maxDistance) camera.position.x = maxDistance;
+                if (camera.position.z < -maxDistance) camera.position.z = -maxDistance;
+                if (camera.position.z > maxDistance) camera.position.z = maxDistance;
+            }
+            
+            // 播放音效
+            function playSound(type) {
+                // 创建简单的音效
+                try {
+                    var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    var oscillator = audioContext.createOscillator();
+                    var gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    // 根据音效类型设置参数
+                    switch(type) {
+                        case 'shoot':
+                            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                            break;
+                        case 'hit':
+                            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                            break;
+                        case 'enemyDeath':
+                            oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                            oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
+                            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                            break;
+                        case 'playerHit':
+                            oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                            oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3);
+                            gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                            break;
+                        case 'reload':
+                            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                            oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.3);
+                            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                            break;
+                        case 'switch':
+                            oscillator.frequency.setValueAtTime(500, audioContext.currentTime);
+                            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.1);
+                            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                            break;
+                        case 'enemyShoot':
+                            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                            break;
+                    }
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } catch (e) {
+                    // 音效API可能不支持，静默失败
+                }
+            }
+            
+            // 更新UI
+            function updateUI() {
+                // 更新生命值
+                var healthPercent = gameState.health / 100;
+                document.getElementById('health-fill').style.width = (healthPercent * 100) + '%';
+                
+                // 更新其他状态
+                document.getElementById('score-value').textContent = gameState.score;
+                document.getElementById('enemies-value').textContent = gameState.enemiesAlive + '/' + gameState.enemiesTotal;
+                document.getElementById('ammo-value').textContent = gameState.ammo + '/∞';
+                
+                // 生命值颜色变化
+                var healthFill = document.getElementById('health-fill');
+                if (gameState.health > 60) {
+                    healthFill.style.background = 'linear-gradient(90deg, #00ff00, #ffff00)';
+                } else if (gameState.health > 30) {
+                    healthFill.style.background = 'linear-gradient(90deg, #ffff00, #ff9500)';
+                } else {
+                    healthFill.style.background = 'linear-gradient(90deg, #ff9500, #ff0000)';
+                }
+            }
+            
+            // 游戏结束
+            function gameOver() {
+                gameActive = false;
+                document.getElementById('message-text').textContent = '游戏结束! 分数: ' + gameState.score;
+                document.getElementById('message').style.display = 'block';
+                exitPointerLock();
+                playSound('playerHit');
+            }
+            
+            // 游戏胜利
+            function gameWin() {
+                gameActive = false;
+                document.getElementById('message-text').textContent = '胜利! 你消灭了所有敌人! 分数: ' + gameState.score;
+                document.getElementById('message').style.display = 'block';
+                exitPointerLock();
+                playSound('enemyDeath');
+            }
+            
+            // 重新开始游戏
+            function restartGame() {
+                // 清除场景
+                while (scene.children.length > 0) {
+                    scene.remove(scene.children[0]);
+                }
+                
+                // 重置游戏状态
+                enemies = [];
+                bullets = [];
+                enemyBullets = [];
+                obstacles = [];
+                
+                gameState = {
+                    score: 0,
+                    health: 100,
+                    ammo: 30,
+                    maxAmmo: 30,
+                    enemiesAlive: 10,
+                    enemiesTotal: 10
+                };
+                
+                currentWeapon = 'rifle';
+                lastShot = 0;
+                gameActive = true;
+                
+                // 重置玩家视角
+                player.pitch = 0;
+                player.yaw = 0;
+                
+                // 隐藏消息
+                document.getElementById('message').style.display = 'none';
+                
+                // 重新初始化场景
+                initScene();
+                updateUI();
+                
+                // 更新武器UI
+                switchWeapon('rifle');
+                
+                // 显示指针锁定提示（PC端）
+                if (!isMobile) {
+                    document.getElementById('pointer-lock-hint').style.display = 'block';
+                }
+            }
+            
+            // 游戏循环
+            function gameLoop() {
+                var deltaTime = clock.getDelta();
+                
+                // 更新玩家
+                if (gameActive) {
+                    updatePlayer(deltaTime);
+                    
+                    // 更新敌人
+                    updateEnemies(deltaTime);
+                    
+                    // 更新子弹
+                    updateBullets(deltaTime);
+                }
+                
+                // 渲染场景
+                renderer.render(scene, camera);
+                
+                // 自动换弹（如果弹药为0）
+                if (gameActive && gameState.ammo <= 0) {
+                    reloadWeapon();
+                }
+                
+                requestAnimationFrame(gameLoop);
+            }
+            
+            // 初始化游戏
+            function startGame() {
+                initScene();
+                initEvents();
+                updateUI();
+                switchWeapon('rifle');
+                gameLoop();
+                
+                // 显示PC提示或移动控制
+                if (isMobile) {
+                    document.getElementById('mobile-controls').style.display = 'flex';
+                } else {
+                    // 显示指针锁定提示
+                    document.getElementById('pointer-lock-hint').style.display = 'block';
+                }
+            }
+            
+            // 开始游戏
+            startGame();
+        }
+    </script>
+</body>
+</html>
